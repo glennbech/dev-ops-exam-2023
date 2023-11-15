@@ -23,6 +23,6 @@ jobs:
           aws-region: eu-west-1
       - run: aws s3 ls
       - run: sam build --use-container
-      - name: checkmain
+      - name: check if branch is main
         if: github.ref == 'refs/heads/main'
-        run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --stack-name sam-2019 --s3-bucket pgr301-sam-bucket --capabilities CAPABILITY_IAM --region eu-west-1
+        run: sam deploy --no-confirm-changeset --no-fail-on-empty-changeset --stack-name sam-5150 --s3-bucket pgr301-sam-bucket --capabilities CAPABILITY_IAM --region eu-west-1
