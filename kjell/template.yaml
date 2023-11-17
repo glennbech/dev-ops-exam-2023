@@ -13,7 +13,7 @@ Globals:
 Parameters:
   MyBeautifulBucket:
     Type: String
-    Default: "kandidatnr-2019"
+    Default: "kandidatnr-2019-1"
 Resources:
 
   Bucket:
