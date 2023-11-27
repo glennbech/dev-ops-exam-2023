@@ -13,23 +13,29 @@ import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.beans.factory.annotation.Autowired;
+import io.micrometer.core.instrument.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
-
 
 @RestController
 public class RekognitionController implements ApplicationListener<ApplicationReadyEvent> {
 
     private final AmazonS3 s3Client;
     private final AmazonRekognition rekognitionClient;
-
+    private final MeterRegistry meterRegistry;
+    private Map<String, Integer> imageCount = new HashMap<>();
+    private int imageTotal = 0;
     private static final Logger logger = Logger.getLogger(RekognitionController.class.getName());
-
-    public RekognitionController() {
+    
+    @Autowired
+    public RekognitionController(MeterRegistry meterRegistry) {
         this.s3Client = AmazonS3ClientBuilder.standard().build();
         this.rekognitionClient = AmazonRekognitionClientBuilder.standard().build();
+        this.meterRegistry = meterRegistry;
     }
 
     /**
@@ -43,6 +49,8 @@ public class RekognitionController implements ApplicationListener<ApplicationRea
     @GetMapping(value = "/scan-ppe", consumes = "*/*", produces = "application/json")
     @ResponseBody
     public ResponseEntity<PPEResponse> scanForPPE(@RequestParam String bucketName) {
+        int numberOfPeopleInImage = 0;
+        int emptyImage = 0;
         // List all objects in the S3 bucket
         ListObjectsV2Result imageList = s3Client.listObjectsV2(bucketName);
 
@@ -70,13 +78,20 @@ public class RekognitionController implements ApplicationListener<ApplicationRea
 
             // If any person on an image lacks PPE on the face, it's a violation of regulations
             boolean violation = isViolation(result);
-
+            if(violation){
+                numberOfPeopleInImage++;
+            }
+            else{
+                emptyImage++;
+            }
             logger.info("scanning " + image.getKey() + ", violation result " + violation);
             // Categorize the current image as a violation or not.
             int personCount = result.getPersons().size();
             PPEClassificationResponse classification = new PPEClassificationResponse(image.getKey(), personCount, violation);
             classificationResponses.add(classification);
         }
+        imageCount.put("image",numberOfPeopleInImage);
+        Gauge.builder("ppe_count",imageCount, map -> map.get("image")).register(meterRegistry);
         PPEResponse ppeResponse = new PPEResponse(bucketName, classificationResponses);
         return ResponseEntity.ok(ppeResponse);
     }
@@ -100,6 +115,12 @@ public class RekognitionController implements ApplicationListener<ApplicationRea
 
     @Override
     public void onApplicationEvent(ApplicationReadyEvent applicationReadyEvent) {
+     
+    // Opprett en Gauge for totalt antall bilder
+    /*Gauge.builder("ppe_count",imageCount, map -> map.get("image"))
+    .register(meterRegistry);
+    */
+        
 
     }
 }
