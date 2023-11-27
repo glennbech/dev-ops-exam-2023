@@ -27,7 +27,7 @@ public class RekognitionController implements ApplicationListener<ApplicationRea
     private final AmazonS3 s3Client;
     private final AmazonRekognition rekognitionClient;
     private final MeterRegistry meterRegistry;
-    private Map<String, Integer> imageCount = new HashMap<>();
+    
     private Map<String, Integer> legalFaceMap = new HashMap<>();
     private int imageTotal = 0;
     private static final Logger logger = Logger.getLogger(RekognitionController.class.getName());
@@ -91,9 +91,9 @@ public class RekognitionController implements ApplicationListener<ApplicationRea
             PPEClassificationResponse classification = new PPEClassificationResponse(image.getKey(), personCount, violation);
             classificationResponses.add(classification);
         }
-        imageCount.put("image",numberOfFaceViolations);
+        legalFaceMap.put("illegal", numberOfFaceViolations);
         legalFaceMap.put("legal", goodFaceCount);
-        Gauge.builder("ppe_count",imageCount, map -> map.get("image")).register(meterRegistry);
+        Gauge.builder("ppe_count",legalFaceMap, map -> map.get("illegal")).register(meterRegistry);
         Gauge.builder("good_face",legalFaceMap, map -> map.get("legal")).register(meterRegistry);
         PPEResponse ppeResponse = new PPEResponse(bucketName, classificationResponses);
         return ResponseEntity.ok(ppeResponse);
