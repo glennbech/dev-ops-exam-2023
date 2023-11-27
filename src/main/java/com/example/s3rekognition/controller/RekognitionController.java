@@ -28,6 +28,7 @@ public class RekognitionController implements ApplicationListener<ApplicationRea
     private final AmazonRekognition rekognitionClient;
     private final MeterRegistry meterRegistry;
     private Map<String, Integer> imageCount = new HashMap<>();
+    private Map<String, Integer> legalFaceMap = new HashMap<>();
     private int imageTotal = 0;
     private static final Logger logger = Logger.getLogger(RekognitionController.class.getName());
     
@@ -49,8 +50,8 @@ public class RekognitionController implements ApplicationListener<ApplicationRea
     @GetMapping(value = "/scan-ppe", consumes = "*/*", produces = "application/json")
     @ResponseBody
     public ResponseEntity<PPEResponse> scanForPPE(@RequestParam String bucketName) {
-        int numberOfPeopleInImage = 0;
-        int emptyImage = 0;
+        int numberOfFaceViolations = 0;
+        int goodFaceCount = 0;
         // List all objects in the S3 bucket
         ListObjectsV2Result imageList = s3Client.listObjectsV2(bucketName);
 
@@ -79,10 +80,10 @@ public class RekognitionController implements ApplicationListener<ApplicationRea
             // If any person on an image lacks PPE on the face, it's a violation of regulations
             boolean violation = isViolation(result);
             if(violation){
-                numberOfPeopleInImage++;
+                numberOfFaceViolations++;
             }
             else{
-                emptyImage++;
+                goodFaceCount++;
             }
             logger.info("scanning " + image.getKey() + ", violation result " + violation);
             // Categorize the current image as a violation or not.
@@ -90,8 +91,10 @@ public class RekognitionController implements ApplicationListener<ApplicationRea
             PPEClassificationResponse classification = new PPEClassificationResponse(image.getKey(), personCount, violation);
             classificationResponses.add(classification);
         }
-        imageCount.put("image",numberOfPeopleInImage);
+        imageCount.put("image",numberOfFaceViolations);
+        legalFaceMap.put("legal", goodFaceCount);
         Gauge.builder("ppe_count",imageCount, map -> map.get("image")).register(meterRegistry);
+        Gauge.builder("good_face",legalFaceMap, map -> map.get("legal")).register(meterRegistry);
         PPEResponse ppeResponse = new PPEResponse(bucketName, classificationResponses);
         return ResponseEntity.ok(ppeResponse);
     }
