@@ -23,7 +23,7 @@ docker build -t kjellpy .
 docker run -e AWS_ACCESS_KEY_ID=XXX -e AWS_SECRET_ACCESS_KEY=YYY -e BUCKET_NAME=kjellsimagebucket kjellpy
 ```
 Hvis det skulle være noe trøbbel med kjellsimagebucket, kan du laste ned jpeg filene fra den bøtten, og uploade til 
-din egen. Så kan du bruke denne bøtten i kommandoen istedenfor: BUCKET_NAME=<ditt-bucket-name>. 
+din egen. Så kan du bruke denne bøtten i kommandoen istedenfor: ```BUCKET_NAME=<ditt-bucket-name>```. 
 
 
 ## Oppgave 2A
